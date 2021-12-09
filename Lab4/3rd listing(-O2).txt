@@ -1,0 +1,74 @@
+LeibnizFormula(int):
+        cmp     w0, 0                   # Сравнить w0 с 0 (N == 0)
+        ble     .L4                     # Переход, если N = 0 
+        movi    v2.2d, #0               # Записать в регистр q2 0 (.2d = 2Dword = Qword) (long double pi = 0)
+        stp     x29, x30, [sp, -80]!    # Сохранить указатели на предыдущий стек и sp -= 80
+        mov     x29, sp                 # База нового стека = вершина старого
+        str     x21, [sp, 32]           # Сохранить x21 в стек
+        mov     w21, w0                 # w21 = w0 (n)
+        stp     x19, x20, [sp, 16]      # Сохранить x19, x20 в стек
+        mov     w20, 1                  # w20 = 1
+        mov     w19, 0                  # w19 = 0 (i)
+        str     d8, [sp, 40]            # Сохранить d8 в стек
+.L3:
+        scvtf   d1, w19                 # Сменить тип на double-precision ((double)i)
+        fmov    d0, -1.0e+0             # d0 = -1.0
+        str     q2, [sp, 64]            # Сохранить q2 в стек (pi)
+        add     w19, w19, 1             # w19 += 1 (++i)
+        bl      pow                     # Вызов подпрограммы pow (q0 = pow(-1, i))
+        fmov    d8, d0                  # d8 = d0
+        mov     w0, w20                 # w0 = w20
+        add     w20, w20, 2             # w20 += 2
+        bl      __floatsitf             # Вызов подпрограммы __floatditf
+        mov     v1.16b, v0.16b          # q1 = q0 (сохранить pow(-1, i ))
+        adrp    x0, .LC0                # x0 = 0x3FFF0000
+        add     x0, x0, :lo12:.LC0      # x0 = 0x3FF00000 (= 1) (:lo12: берет первые 12 бит)
+        ldr     q0, [x0]                # Загрузить в q0 x0
+        bl      __divtf3                # Вызов подпрограммы __divtf3 (q0 = 1 / 2 * i + 1)
+        str     q0, [sp, 48]            # Сохранить appendix в стек (appendix = q0)
+        fmov    d0, d8                  # d0 = d8
+        bl      __extenddftf2           # Вызов подпрограммы __extenddftf2
+        mov     v1.16b, v0.16b          # q1 = q0
+        ldr     q4, [sp, 48]            # Загрузить в q4 appendix 
+        mov     v0.16b, v4.16b          # q0 = q4
+        bl      __multf3                # Вызов подпрограммы __multf3 (q0 = appendix * pow(-1, i))
+        ldr     q2, [sp, 64]            # Загрузить в q2 pi
+        mov     v1.16b, v0.16b          # q1 = q0 
+        mov     v0.16b, v2.16b          # q0 = q2
+        bl      __addtf3                # Вызов подпрограммы __addtf3 (q0 += q1)
+        cmp     w21, w19                # Cравнить w21 и w19 (i == n)
+        mov     v2.16b, v0.16b          # q2 = q0 (сохранить pi)
+        bne     .L3                     # Переход, если не равны
+        adrp    x0, .LC1                # x0 = 0x40100000
+        add     x0, x0, :lo12:.LC1      # x0 = 0x40100000 (= 4)
+        ldr     q1, [x0]                # Загрузить в q1 x0
+        bl      __multf3                # Вызов подпрограммы __multf3 (q0 *= q1) (pi *= 4)
+        ldp     x19, x20, [sp, 16]      # Восстановить значения x19 и x20
+        ldr     x21, [sp, 32]           # Восстановить значение x21
+        ldr     d8, [sp, 40]            # Восстановить значение d8
+        ldp     x29, x30, [sp], 80      # Восстановить указатели на предыдущий стек
+        ret                             # Возврат из подпрограммы
+.L4:
+        movi    v0.2d, #0               # Записать в регистр v0 0
+        ret                             # Возврат из подпрограммы
+main:
+        stp     x29, x30, [sp, -16]!    # Сохранить указатели на предыдущий стек и sp -= 16
+        mov     x29, sp                 # База нового стека = вершина старого
+        bl      clock                   # Вызов подпрограммы clock
+        mov     w0, 16960               # w0 = 16960 (0x00004240)
+        movk    w0, 0xf, lsl 16         # w0 = 0x00004240 + 0xF0000 = 0x000F4240 (N = 1000000)
+        bl      LeibnizFormula(int)     # Вызов подпрограммы LeibnizFormula
+        bl      clock                   # Вызов подпрограммы clock
+        mov     w0, 0                   # return 0
+        ldp     x29, x30, [sp], 16      # Восстановить указатели на предыдущий стек
+        ret                             # Возврат из подпрограммы
+.LC0:
+        .word   0
+        .word   0
+        .word   0
+        .word   1073676288              # 0x3FFF0000
+.LC1:
+        .word   0
+        .word   0
+        .word   0
+        .word   1073807360              # 0x40100000 

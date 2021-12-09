@@ -1,0 +1,79 @@
+LeibnizFormula(int):
+        stp     x29, x30, [sp, -80]!    # Сохранить указатели на предыдущий стек и sp -= 80
+        mov     x29, sp                 # База нового стека = вершина старого
+        str     w0, [sp, 28]            # Сохранить n в стек 
+        stp     xzr, xzr, [sp, 64]      # Сохранить pi = 0 в стек 
+        str     wzr, [sp, 60]           # Сохранить i = 0 в стек 
+.L3:
+        ldr     w1, [sp, 60]            # Загрузить в w1 i
+        ldr     w0, [sp, 28]            # Загрузить в w0 n
+        cmp     w1, w0                  # Сравнить i и n
+        bge     .L2                     # Переход, если i >= n
+        ldr     w0, [sp, 60]            # Загрузить в w0 i
+        lsl     w0, w0, 1               # Сдвинуть w0 на 1 бит влево (i *= 2)
+        add     w0, w0, 1               # Добавить к w0 1 (i = 2 * i + 1)
+        bl      __floatsitf             # Вызов подпрограммы __floatditf
+        mov     v1.16b, v0.16b          # q1 = q0
+        adrp    x0, .LC0                # x0 = 0x3FFF0000
+        add     x0, x0, :lo12:.LC0      # x0 = 0x3FF00000 (= 1) (:lo12: берет первые 12 бит)
+        ldr     q0, [x0]                # Загрузить в q0 x0
+        bl      __divtf3                # Вызов подпрограммы __divtf3 (q0 = 1 / 2 * i + 1)
+        str     q0, [sp, 32]            # Сохранить q0 в стек (appendix = q0)
+        ldr     w0, [sp, 60]            # Загрузить в w0 i
+        scvtf   d0, w0                  # Сменить тип на double-precision ((double)i)
+        fmov    d1, d0                  # Сохранить в d1 (double)i
+        fmov    d0, -1.0e+0             # d0 = -1.0
+        bl      pow                     # Вызов подпрограммы pow (q0 = pow(-1, i))
+        bl      __extenddftf2           # Вызов подпрограммы __extenddftf2
+        ldr     q1, [sp, 32]            # Загрузить в q1 appendix
+        bl      __multf3                # Вызов подпрограммы __multf3 (q0 *= q1)
+        mov     v1.16b, v0.16b          # q1 = q0 
+        ldr     q0, [sp, 64]            # Загрузить в q0 pi
+        bl      __addtf3                # Вызов подпрограммы __addtf3 (q0 += q1)
+        str     q0, [sp, 64]            # Сохранить pi в стек 
+        ldr     w0, [sp, 60]            # Загрузить в w0 i
+        add     w0, w0, 1               # Добавить к w0 1 (++i)
+        str     w0, [sp, 60]            # Сохранить i в стек 
+        b       .L3
+.L2:
+        adrp    x0, .LC1                # x0 = 0x40100000 
+        add     x0, x0, :lo12:.LC1      # x0 = 0x40100000 (= 4)
+        ldr     q1, [x0]                # Загрузить в q1 x0
+        ldr     q0, [sp, 64]            # Загрузить в q0 pi                               
+        bl      __multf3                # Вызов подпрограммы __multf3 (q0 *= q1)
+        str     q0, [sp, 64]            # Сохранить в стек pi
+        ldr     q0, [sp, 64]            # Загрузить в q0 pi
+        ldp     x29, x30, [sp], 80      # Восстановить указатели на предыдущий стек
+        ret                             # Возврат из подпрограммы
+main:
+        stp     x29, x30, [sp, -96]!    # Сохранить указатели на предыдущий стек и sp -= 96
+        mov     x29, sp                 # База нового стека = вершина старого
+        mov     w0, 16960               # w0 = 16960 (0x00004240)
+        movk    w0, 0xf, lsl 16         # w0 = 0x00004240 + 0xF0000 = 0x000F4240 (N = 1000000)
+        str     w0, [sp, 92]            # Сохранить N в стек
+        bl      clock                   # Вызов подпрограммы clock
+        bl      __floatditf             # Вызов подпрограммы __floatditf
+        str     q0, [sp, 64]            # Сохранить startTime в стек
+        ldr     w0, [sp, 92]            # Загрузить из памяти N
+        bl      LeibnizFormula(int)     # Вызов подпрограммы LeibnizFormula
+        str     q0, [sp, 48]            # Сохранить pi в стек 
+        bl      clock                   # Вызов подпрограммы clock
+        bl      __floatditf             # Вызов подпрограммы __floatditf
+        str     q0, [sp, 32]            # Сохранить endTime в стек
+        ldr     q1, [sp, 64]            # Загрузить в q1 startTime
+        ldr     q0, [sp, 32]            # Загрузить в q0 endTime
+        bl      __subtf3                # Вызов подпрограммы __subtf3 (вычитание)
+        str     q0, [sp, 16]            # Сохранить runTime =  endTime - startTime в стек 
+        mov     w0, 0                   # return 0
+        ldp     x29, x30, [sp], 96      # Восстановить указатели на предыдущий стек
+        ret                             # Возврат из подпрограммы
+.LC0:
+        .word   0
+        .word   0
+        .word   0
+        .word   1073676288              # 0x3FFF0000
+.LC1:
+        .word   0
+        .word   0
+        .word   0
+        .word   1073807360              # 0x40100000                    
